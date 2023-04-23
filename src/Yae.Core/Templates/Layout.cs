@@ -15,11 +15,11 @@ namespace Yae.Core.Templates
             {"Ctrl+S", "Save"}
         };
 
-        public static async Task RenderHeaderAsync(FileInfo file, int screenWidth)
+        public static async Task RenderHeaderAsync(string name, int screenWidth)
         {
             await Output.WriteLineAsync(new string(Chars.Horizontal, screenWidth));
             await Output.WriteAsync($"{Chars.Whitespace}File:{Chars.Whitespace}", ConsoleColor.Blue);
-            await Output.WriteLineAsync(file.FullName);
+            await Output.WriteLineAsync(name);
         }
 
         public static async Task RenderFooterAsync(int screenWidth)

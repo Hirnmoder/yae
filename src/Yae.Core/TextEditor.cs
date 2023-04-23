@@ -13,7 +13,11 @@ namespace Yae.Core
         private const int RowNumbersBarWidth = 9;
         private const int ScreenWidth = 150;
 
-        private readonly FileInfo _file;
+
+        private readonly string _name;
+        private readonly FileInfo? _file;
+        private readonly StreamReader? _sr;
+        private readonly Func<StreamWriter>? _getSW;
         private readonly int _linesPerPage;
         private readonly TextBlock _textBlock;
 
@@ -23,8 +27,21 @@ namespace Yae.Core
             FileValidator.Validate(file);
 
             _file = file;
+            _name = file.FullName;
             _linesPerPage = linesPerPage;
             _textBlock = new TextBlock(linesPerPage);
+        }
+
+        public TextEditor(string name, StreamReader sr, Func<StreamWriter> getSW, int linesPerPage)
+        {
+            LinesCountValidator.Validate(linesPerPage);
+
+            _linesPerPage = linesPerPage;
+            _textBlock = new TextBlock(linesPerPage);
+
+            _name = name;
+            _sr = sr;
+            _getSW = getSW;
         }
 
         public async Task RunAsync()
@@ -33,10 +50,10 @@ namespace Yae.Core
 
             await InitAsync();
 
-            var encoding = await Source.GetEncodingAsync(_file);
-            Output.SetEncoding(encoding);
+            var encoding = await (_file == default ? Task.FromResult(_sr.CurrentEncoding) : Source.GetEncodingAsync(_file));
+            var inputData = await (_file == default ? Task.FromResult(_sr.ReadToEnd().Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.TrimEntries)) : Source.ReadAllLinesAsync(_file));
 
-            var inputData = await Source.ReadAllLinesAsync(_file);
+            Output.SetEncoding(encoding);
             await _textBlock.InitAsync(inputData);
 
             try
@@ -61,14 +78,20 @@ namespace Yae.Core
 
         private void EnsureWindowSize()
         {
-            // todo
+            try
+            {
+                Console.SetWindowSize(ScreenWidth, _linesPerPage + 3 + 3 + 1);
+            }
+            catch
+            {
+            }
         }
 
         private async Task InitAsync()
         {
             Output.ClearScreen();
 
-            await Layout.RenderHeaderAsync(_file, ScreenWidth);
+            await Layout.RenderHeaderAsync(_name, ScreenWidth);
             await Layout.RenderBodyAsync(_linesPerPage, ScreenWidth);
             await Layout.RenderFooterAsync(ScreenWidth);
 
@@ -98,7 +121,14 @@ namespace Yae.Core
 
         private Task SaveFileAsync()
         {
-            return Source.SaveFileAsync(_file, _textBlock.GetAllLines());
+            if (_file == default)
+            {
+                return Source.SaveFileAsync(_getSW(), _textBlock.GetAllLines());
+            }
+            else
+            {
+                return Source.SaveFileAsync(_file, _textBlock.GetAllLines());
+            }
         }
 
         private async Task<bool> WaitInputKeyAsync()

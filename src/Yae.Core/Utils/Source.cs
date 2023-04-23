@@ -28,5 +28,11 @@ namespace Yae.Core.Utils
         {
             return File.WriteAllLinesAsync(file.FullName, contents);
         }
+
+        public static async Task SaveFileAsync(StreamWriter sw, IEnumerable<string> contents)
+        {
+            foreach (var line in contents)
+                await sw.WriteLineAsync(line);
+        }
     }
 }
